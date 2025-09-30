@@ -84,7 +84,8 @@ class Auth:
         if 'user' in st.session_state:
             del st.session_state.user
         
-        keys_to_remove = ['selected_set_id', 'study_session', 'test_session', 'new_cards']
+        keys_to_remove = ['selected_set_id', 'study_session', 'test_session', 'new_cards',
+                          'db_data_manager', 'db_study_progress', 'data_manager', 'study_progress']
         for key in keys_to_remove:
             if key in st.session_state:
                 del st.session_state[key]
