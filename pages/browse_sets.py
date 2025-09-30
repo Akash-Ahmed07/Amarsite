@@ -1,7 +1,59 @@
 import streamlit as st
+from utils import auth
 
 st.title("📖 Browse Study Sets")
 st.markdown("Explore and manage your study sets.")
+
+# Handle sharing modal
+if hasattr(st.session_state, 'sharing_set_id') and st.session_state.sharing_set_id:
+    sharing_set_id = st.session_state.sharing_set_id
+    sharing_set = st.session_state.data_manager.get_study_set(sharing_set_id)
+    
+    if sharing_set:
+        with st.expander(f"🔗 Share: {sharing_set['title']}", expanded=True):
+            st.markdown("### Sharing Settings")
+            
+            # Get current sharing settings
+            is_authenticated = auth.is_authenticated()
+            
+            if is_authenticated:
+                db = st.session_state.db
+                user_id = st.session_state.user_id
+                
+                # Get current share code
+                set_data = db.get_study_set(sharing_set_id)
+                current_share_code = set_data.get('share_code') if set_data else None
+                
+                # Public/Private toggle
+                is_public = set_data.get('is_public', False) if set_data else False
+                new_is_public = st.toggle("Make this set public", value=is_public, key=f"public_toggle_{sharing_set_id}")
+                
+                if new_is_public != is_public:
+                    db.update_study_set(sharing_set_id, user_id, is_public=new_is_public)
+                    st.success("✅ Visibility updated!")
+                    st.rerun()
+                
+                st.markdown("---")
+                st.markdown("### Share Link")
+                
+                if current_share_code:
+                    share_url = f"https://{st.session_state.get('REPL_SLUG', 'amarsite-online')}.replit.app?share={current_share_code}"
+                    st.code(share_url, language=None)
+                    st.caption("Anyone with this link can view and copy this study set")
+                else:
+                    if st.button("Generate Share Link", key=f"gen_share_{sharing_set_id}"):
+                        share_code = db.generate_share_code(sharing_set_id, user_id)
+                        st.success("✅ Share link generated!")
+                        st.rerun()
+                
+                if st.button("Close", key=f"close_share_{sharing_set_id}"):
+                    del st.session_state.sharing_set_id
+                    st.rerun()
+            else:
+                st.warning("Please log in to share study sets")
+                if st.button("Close", key=f"close_share_anon_{sharing_set_id}"):
+                    del st.session_state.sharing_set_id
+                    st.rerun()
 
 # Get all study sets
 all_sets = st.session_state.data_manager.get_all_sets()
@@ -72,7 +124,7 @@ else:
                         """, unsafe_allow_html=True)
                         
                         # Action buttons
-                        col_a, col_b, col_c = st.columns(3)
+                        col_a, col_b, col_c, col_d = st.columns(4)
                         
                         with col_a:
                             if st.button("📖 Study", key=f"study_{set_id}", use_container_width=True):
@@ -87,6 +139,11 @@ else:
                                 st.rerun()
                         
                         with col_c:
+                            if st.button("🔗 Share", key=f"share_{set_id}", use_container_width=True):
+                                st.session_state.sharing_set_id = set_id
+                                st.rerun()
+                        
+                        with col_d:
                             if st.button("🗑️ Delete", key=f"delete_{set_id}", use_container_width=True):
                                 if st.session_state.data_manager.delete_study_set(set_id):
                                     st.success(f"Deleted '{study_set['title']}'")

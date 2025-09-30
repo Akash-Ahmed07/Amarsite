@@ -34,6 +34,14 @@ else:
     st.session_state.data_manager = st.session_state.json_data_manager
     st.session_state.study_progress = st.session_state.json_study_progress
 
+# Handle share code query parameter
+query_params = st.query_params
+if 'share' in query_params:
+    share_code = query_params['share']
+    if 'viewed_share_code' not in st.session_state or st.session_state.viewed_share_code != share_code:
+        st.session_state.viewed_share_code = share_code
+        st.session_state.incoming_share_code = share_code
+
 # Page configuration
 st.set_page_config(
     page_title="Amarsite.Online - Study Platform",
@@ -109,6 +117,61 @@ else:
         st.rerun()
     
     page = "Login"
+
+# Handle incoming share code
+if hasattr(st.session_state, 'incoming_share_code') and st.session_state.incoming_share_code:
+    from utils.db import Database
+    
+    db = Database()
+    share_code = st.session_state.incoming_share_code
+    shared_set = db.get_study_set_by_share_code(share_code)
+    
+    if shared_set:
+        st.success(f"✅ Found shared study set: **{shared_set['title']}**")
+        
+        cards = db.get_cards(shared_set['id'])
+        
+        st.markdown(f"### {shared_set['title']}")
+        st.markdown(f"**Description:** {shared_set.get('description', 'No description')}")
+        st.markdown(f"**Subject:** {shared_set.get('subject', 'Other')}")
+        st.markdown(f"**Cards:** {len(cards)}")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if auth.is_authenticated():
+                if st.button("📥 Copy to My Sets", key="copy_shared_set"):
+                    user_id = st.session_state.user_id
+                    new_set_id = db.copy_study_set(shared_set['id'], user_id)
+                    if new_set_id:
+                        st.success("✅ Study set copied to your collection!")
+                        del st.session_state.incoming_share_code
+                        st.session_state.page = "Browse Sets"
+                        st.rerun()
+            else:
+                st.info("Log in to copy this study set to your collection")
+        
+        with col2:
+            if st.button("✖️ Close", key="close_shared_set"):
+                del st.session_state.incoming_share_code
+                st.rerun()
+        
+        st.markdown("---")
+        st.markdown("### Preview Cards")
+        for i, card in enumerate(cards[:5]):
+            with st.expander(f"Card {i+1}: {card['term'][:50]}"):
+                st.write(f"**Term:** {card['term']}")
+                st.write(f"**Definition:** {card['definition']}")
+        
+        if len(cards) > 5:
+            st.caption(f"... and {len(cards) - 5} more cards")
+    else:
+        st.error("❌ Invalid or expired share link")
+        if st.button("Go Home"):
+            del st.session_state.incoming_share_code
+            st.rerun()
+    
+    st.stop()
 
 # Main content based on selected page
 if page == "Home":

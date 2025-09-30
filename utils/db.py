@@ -225,6 +225,8 @@ class Database:
         if is_public is not None:
             updates.append("is_public = %s")
             params.append(is_public)
+            if is_public == False:
+                updates.append("share_code = NULL")
         
         if updates:
             updates.append("updated_at = %s")
@@ -388,18 +390,73 @@ class Database:
             })
         return study_sets
     
-    def create_share_link(self, study_set_id: str, share_code: str) -> bool:
-        """Create a share link for a study set"""
+    def generate_share_code(self, study_set_id: str, user_id: int) -> str:
+        """Generate and store a unique share code for a study set"""
+        import random
+        import string
+        
+        share_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+        
         query = """
-            INSERT INTO study_set_shares (study_set_id, share_code, created_at)
-            VALUES (%s, %s, %s)
-            ON CONFLICT (share_code) DO NOTHING
+            UPDATE study_sets 
+            SET share_code = %s 
+            WHERE id = %s AND user_id = %s
         """
-        self.execute_query(query, (study_set_id, share_code, datetime.now()))
-        return True
+        self.execute_query(query, (share_code, study_set_id, user_id))
+        return share_code
     
-    def get_study_set_by_share_code(self, share_code: str) -> Optional[str]:
-        """Get study set ID by share code"""
-        query = "SELECT study_set_id FROM study_set_shares WHERE share_code = %s"
+    def get_study_set_by_share_code(self, share_code: str) -> Optional[Dict]:
+        """Get study set by share code (only if public or has valid share code)"""
+        query = """
+            SELECT s.id, s.user_id, s.title, s.description, s.subject, s.is_public
+            FROM study_sets s
+            WHERE s.share_code = %s AND (s.is_public = TRUE OR s.share_code IS NOT NULL)
+        """
         result = self.execute_query(query, (share_code,), fetch='one')
-        return result[0] if result else None
+        if result:
+            is_public = result[5]
+            if not is_public:
+                return None
+            return {
+                'id': result[0],
+                'user_id': result[1],
+                'title': result[2],
+                'description': result[3],
+                'subject': result[4],
+                'is_public': result[5]
+            }
+        return None
+    
+    def copy_study_set(self, original_set_id: str, new_user_id: int, new_title: str = None) -> str:
+        """Copy a study set to a new user"""
+        import uuid
+        
+        original_set = self.get_study_set(original_set_id)
+        if not original_set:
+            return None
+        
+        new_set_id = str(uuid.uuid4())
+        title = new_title or f"{original_set['title']} (Copy)"
+        
+        insert_set_query = """
+            INSERT INTO study_sets (id, user_id, title, description, subject, is_public, created_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """
+        self.execute_query(
+            insert_set_query,
+            (new_set_id, new_user_id, title, original_set['description'], 
+             original_set['subject'], False, datetime.now())
+        )
+        
+        cards = self.get_cards(original_set_id)
+        for card in cards:
+            self.add_card_to_set(
+                new_set_id, 
+                card['term'], 
+                card['definition'],
+                card['card_order'],
+                card.get('term_image_url'),
+                card.get('definition_image_url')
+            )
+        
+        return new_set_id
