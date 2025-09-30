@@ -16,6 +16,11 @@ auth = st.session_state.auth
 
 if auth.is_authenticated():
     user = auth.get_current_user()
+    st.session_state.user_id = user['id']
+    
+    if 'db' not in st.session_state:
+        from utils.db import Database
+        st.session_state.db = Database()
     
     if 'db_data_manager' not in st.session_state:
         st.session_state.db_data_manager = DBDataManager(user['id'])
@@ -283,10 +288,7 @@ elif page == "Login":
     exec(open("pages/auth.py").read())
 
 elif page == "Public Library":
-    if auth.is_authenticated():
-        st.info("Public Library feature coming soon!")
-    else:
-        st.warning("Please login to access the Public Library")
+    exec(open("pages/public_library.py").read())
 
 # Footer
 st.markdown("---")
