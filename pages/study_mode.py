@@ -127,6 +127,15 @@ with st.container():
             st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
 
+# Helper function to move to next card
+def next_card():
+    """Helper function to move to next card"""
+    if st.session_state.study_session['current_index'] < len(cards) - 1:
+        st.session_state.study_session['current_index'] += 1
+        st.session_state.study_session['show_definition'] = False
+        st.session_state.study_session['studied_cards'].add(current_index)
+        st.rerun()
+
 # Card difficulty rating (when definition is shown)
 if st.session_state.study_session['show_definition']:
     st.markdown("---")
@@ -195,14 +204,6 @@ if current_index == len(cards) - 1 and st.session_state.study_session['show_defi
                 st.session_state.study_session['current_index'] = 0
                 st.session_state.study_session['show_definition'] = False
                 st.rerun()
-
-def next_card():
-    """Helper function to move to next card"""
-    if st.session_state.study_session['current_index'] < len(cards) - 1:
-        st.session_state.study_session['current_index'] += 1
-        st.session_state.study_session['show_definition'] = False
-        st.session_state.study_session['studied_cards'].add(current_index)
-        st.rerun()
 
 # Sidebar with study progress
 with st.sidebar:
