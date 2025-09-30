@@ -3,6 +3,11 @@ import pandas as pd
 import os
 from utils.data_manager import DataManager
 from utils.study_progress import StudyProgress
+from utils.auth import Auth
+
+# Initialize auth
+if 'auth' not in st.session_state:
+    st.session_state.auth = Auth()
 
 # Initialize data manager and study progress
 if 'data_manager' not in st.session_state:
@@ -58,10 +63,32 @@ st.markdown('<p class="subtitle">Master whatever you\'re learning with interacti
 
 # Sidebar navigation
 st.sidebar.title("Navigation")
-page = st.sidebar.selectbox(
-    "Choose a page:",
-    ["Home", "Create Study Set", "Browse Sets", "Study Mode", "Practice Test"]
-)
+
+auth = st.session_state.auth
+
+if auth.is_authenticated():
+    user = auth.get_current_user()
+    st.sidebar.markdown(f"### 👤 {user['username']}")
+    st.sidebar.markdown(f"*{user['email']}*")
+    
+    if st.sidebar.button("🚪 Logout", use_container_width=True):
+        auth.logout()
+        st.rerun()
+    
+    st.sidebar.markdown("---")
+    
+    page = st.sidebar.selectbox(
+        "Choose a page:",
+        ["Home", "Create Study Set", "Browse Sets", "Study Mode", "Practice Test", "Public Library"]
+    )
+else:
+    st.sidebar.info("Login to save your progress and access all features!")
+    
+    if st.sidebar.button("🔐 Login / Sign Up", use_container_width=True):
+        st.session_state.page = "Login"
+        st.rerun()
+    
+    page = "Login"
 
 # Main content based on selected page
 if page == "Home":
@@ -165,6 +192,15 @@ elif page == "Study Mode":
 
 elif page == "Practice Test":
     exec(open("pages/practice_test.py").read())
+
+elif page == "Login":
+    exec(open("pages/auth.py").read())
+
+elif page == "Public Library":
+    if auth.is_authenticated():
+        st.info("Public Library feature coming soon!")
+    else:
+        st.warning("Please login to access the Public Library")
 
 # Footer
 st.markdown("---")
