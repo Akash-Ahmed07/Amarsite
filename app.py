@@ -99,7 +99,7 @@ if auth.is_authenticated():
     
     page = st.sidebar.selectbox(
         "Choose a page:",
-        ["Home", "Create Study Set", "Browse Sets", "Study Mode", "Practice Test", "Public Library"]
+        ["Home", "Create Study Set", "Browse Sets", "Study Mode", "Practice Test", "Spaced Review", "Public Library"]
     )
 else:
     st.sidebar.info("Login to save your progress and access all features!")
@@ -212,6 +212,9 @@ elif page == "Study Mode":
 
 elif page == "Practice Test":
     exec(open("pages/practice_test.py").read())
+
+elif page == "Spaced Review":
+    exec(open("pages/spaced_review.py").read())
 
 elif page == "Login":
     exec(open("pages/auth.py").read())

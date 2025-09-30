@@ -244,10 +244,14 @@ class Database:
     
     def update_study_progress(self, user_id: int, card_id: int, study_set_id: str,
                              difficulty: str, mastery_level: int) -> bool:
-        """Update or create study progress for a card"""
+        """Update or create study progress for a card using spaced repetition"""
+        from utils.spaced_repetition import SpacedRepetition
+        
         now = datetime.now()
         
-        check_query = "SELECT id, difficulty_history, times_studied FROM study_progress WHERE user_id = %s AND card_id = %s"
+        check_query = """SELECT id, difficulty_history, times_studied, mastery_level,
+                        easiness_factor, repetitions, interval_days
+                        FROM study_progress WHERE user_id = %s AND card_id = %s"""
         existing = self.execute_query(check_query, (user_id, card_id), fetch='one')
         
         if existing:
@@ -265,18 +269,29 @@ class Database:
             })
             
             times_studied = (existing[2] or 0) + 1
+            current_mastery = existing[3] or 0
+            current_easiness = existing[4] or 2.5
+            current_repetitions = existing[5] or 0
+            current_interval = existing[6] or 0
+            
+            mastery_level = current_mastery + (2 if difficulty == 'easy' else 1 if difficulty == 'good' else -1)
+            mastery_level = max(0, min(10, mastery_level))
+            
+            next_review, new_easiness, new_repetitions, new_interval = SpacedRepetition.get_next_review_date(
+                current_easiness, current_repetitions, current_interval, difficulty
+            )
             
             update_query = """
                 UPDATE study_progress 
                 SET mastery_level = %s, times_studied = %s, last_studied = %s, 
-                    difficulty_history = %s, next_review_date = %s
+                    difficulty_history = %s, next_review_date = %s, easiness_factor = %s,
+                    repetitions = %s, interval_days = %s
                 WHERE user_id = %s AND card_id = %s
             """
-            next_review = self.calculate_next_review(mastery_level, now)
             self.execute_query(
                 update_query,
                 (mastery_level, times_studied, now, json.dumps(difficulty_history), 
-                 next_review, user_id, card_id)
+                 next_review, new_easiness, new_repetitions, new_interval, user_id, card_id)
             )
         else:
             difficulty_history = [{
@@ -284,16 +299,20 @@ class Database:
                 'timestamp': now.isoformat()
             }]
             
+            next_review, new_easiness, new_repetitions, new_interval = SpacedRepetition.get_next_review_date(
+                2.5, 0, 0, difficulty
+            )
+            
             insert_query = """
                 INSERT INTO study_progress (user_id, card_id, study_set_id, mastery_level, 
-                                           times_studied, last_studied, difficulty_history, next_review_date)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                                           times_studied, last_studied, difficulty_history, next_review_date,
+                                           easiness_factor, repetitions, interval_days)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
-            next_review = self.calculate_next_review(mastery_level, now)
             self.execute_query(
                 insert_query,
                 (user_id, card_id, study_set_id, mastery_level, 1, now, 
-                 json.dumps(difficulty_history), next_review)
+                 json.dumps(difficulty_history), next_review, new_easiness, new_repetitions, new_interval)
             )
         
         return True
