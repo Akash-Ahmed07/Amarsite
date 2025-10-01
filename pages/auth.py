@@ -1,7 +1,9 @@
 import streamlit as st
-from utils.auth import Auth
+from utils.session_utils import ensure_session
 
-auth = Auth()
+ensure_session()
+
+auth = st.session_state.auth
 
 st.title("🔐 Welcome to Amarsite.Online")
 

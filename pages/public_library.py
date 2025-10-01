@@ -1,10 +1,12 @@
 import streamlit as st
-from utils import auth
+from utils.session_utils import ensure_session
+
+ensure_session()
 
 st.title("🌐 Public Library")
 st.markdown("Discover and copy study sets shared by other users")
 
-if not auth.is_authenticated():
+if not st.session_state.auth.is_authenticated():
     st.warning("Please log in to access the Public Library and copy study sets")
     st.stop()
 

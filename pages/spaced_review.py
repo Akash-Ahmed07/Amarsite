@@ -1,6 +1,9 @@
 import streamlit as st
 from utils.spaced_repetition import SpacedRepetition
 from datetime import datetime
+from utils.session_utils import ensure_session
+
+ensure_session()
 
 st.title("📅 Spaced Repetition Review")
 st.markdown("Review cards that are due based on the spaced repetition algorithm for optimal learning.")

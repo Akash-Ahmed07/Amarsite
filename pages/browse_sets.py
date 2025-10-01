@@ -1,5 +1,7 @@
 import streamlit as st
-from utils import auth
+from utils.session_utils import ensure_session
+
+ensure_session()
 
 st.title("📖 Browse Study Sets")
 st.markdown("Explore and manage your study sets.")
@@ -14,7 +16,7 @@ if hasattr(st.session_state, 'sharing_set_id') and st.session_state.sharing_set_
             st.markdown("### Sharing Settings")
             
             # Get current sharing settings
-            is_authenticated = auth.is_authenticated()
+            is_authenticated = st.session_state.auth.is_authenticated()
             
             if is_authenticated:
                 db = st.session_state.db

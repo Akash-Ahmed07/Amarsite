@@ -1,6 +1,9 @@
 import streamlit as st
 import uuid
 from datetime import datetime
+from utils.session_utils import ensure_session
+
+ensure_session()
 
 st.title("📝 Create Study Set")
 st.markdown("Build your own flashcard set to study any subject.")

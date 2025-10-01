@@ -1,5 +1,8 @@
 import streamlit as st
 import random
+from utils.session_utils import ensure_session
+
+ensure_session()
 
 st.title("🎯 Practice Test")
 

@@ -427,6 +427,28 @@ class Database:
             }
         return None
     
+    def get_cards(self, study_set_id: str) -> List[Dict]:
+        """Get all cards for a study set"""
+        query = """
+            SELECT id, term, definition, term_image_url, definition_image_url, card_order
+            FROM cards
+            WHERE study_set_id = %s
+            ORDER BY card_order
+        """
+        results = self.execute_query(query, (study_set_id,), fetch='all')
+        
+        cards = []
+        for row in results or []:
+            cards.append({
+                'id': row[0],
+                'term': row[1],
+                'definition': row[2],
+                'term_image_url': row[3],
+                'definition_image_url': row[4],
+                'card_order': row[5]
+            })
+        return cards
+    
     def copy_study_set(self, original_set_id: str, new_user_id: int, new_title: str = None) -> str:
         """Copy a study set to a new user"""
         import uuid
